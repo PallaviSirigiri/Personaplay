@@ -1,0 +1,540 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man with True Difficulty Levels</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background-color: black;
+            display: block;
+            margin: 20px auto;
+            border: 3px solid white;
+        }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #333;
+            color: white;
+            border: 2px solid white;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        #levelInfo {
+            font-size: 18px;
+            margin: 10px;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pac-Man with True Difficulty Levels</h1>
+    <div class="controls">
+        <button id="easyBtn">Easy</button>
+        <button id="mediumBtn">Medium</button>
+        <button id="hardBtn">Hard</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <p>Use Arrow Keys to move Pac-Man!</p>
+    <p id="levelInfo">Select a difficulty level to start</p>
+
+    <script>
+        // Game constants
+        const TILE_SIZE = 40;
+        const ROWS = 12, COLS = 15;
+        
+        // DOM elements
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const easyBtn = document.getElementById("easyBtn");
+        const mediumBtn = document.getElementById("mediumBtn");
+        const hardBtn = document.getElementById("hardBtn");
+        const levelInfo = document.getElementById("levelInfo");
+
+        // Set canvas size
+        canvas.width = COLS * TILE_SIZE;
+        canvas.height = ROWS * TILE_SIZE;
+
+        // Game state
+        let score = 0;
+        let level = null;
+        let gameTick = 0;
+        let pacMan = { x: 3, y: 3 };
+        let ghosts = [];
+        let grid = [];
+        let gameRunning = false;
+        let dotsRemaining = 0;
+
+        // Linked list node for pathfinding
+        class PathNode {
+            constructor(x, y, prev = null) {
+                this.x = x;
+                this.y = y;
+                this.prev = prev;
+            }
+        }
+
+        // Initialize game board
+        function initGrid() {
+            grid = [
+                ['#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#'],
+                ['#', '.', '.', '.', '#', '.', '.', '.', '#', '.', '.', '.', '.', '.', '#'],
+                ['#', '.', '#', '.', '.', '.', '#', '.', '.', '.', '#', '.', '#', '.', '#'],
+                ['#', '.', '#', 'P', ' ', ' ', ' ', ' ', ' ', '#', '.', '.', '.', '.', '#'],
+                ['#', '.', '#', ' ', '.', '.', '.', '.', ' ', '#', '.', '.', '.', '.', '#'],
+                ['#', '.', '#', ' ', '#', '#', '#', '#', ' ', '#', '.', '.', '#', '.', '#'],
+                ['#', '.', '#', ' ', 'G', '.', '.', 'G', ' ', '#', '.', '.', '.', '.', '#'],
+                ['#', '.', '.', '.', '#', '.', '.', '#', '.', '#', '.', '.', '#', '.', '#'],
+                ['#', '.', '.', '.', '#', 'G', ' ', '#', '.', '.', '.', '.', '.', '.', '#'],
+                ['#', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '#', '.', '.', '#'],
+                ['#', '.', '.', '#', '#', '#', '#', '#', '#', '#', '.', '.', '.', '.', '#'],
+                ['#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#']
+            ];
+            
+            // Count dots
+            dotsRemaining = grid.flat().filter(cell => cell === '.').length;
+        }
+
+        // Initialize ghosts based on difficulty
+        function initGhosts() {
+            // Clear any existing ghosts
+            ghosts = [];
+            
+            // Base ghost definitions
+            const ghostDefinitions = [
+                { x: 6, y: 4, color: "red" },
+                { x: 6, y: 8, color: "cyan" },
+                { x: 8, y: 5, color: "pink" },
+                { x: 4, y: 9, color: "orange" }
+            ];
+
+            // Configure based on difficulty
+            if (level === "easy") {
+                ghostDefinitions.forEach((ghost, index) => {
+                    ghosts.push({
+                        ...ghost,
+                        speed: 0.7 - (index * 0.1), // Slowest ghost is 0.4 speed
+                        vision: 5, // Short sight range
+                        aggression: 0.3, // Low chance to chase directly
+                        randomness: 0.4, // High chance to wander
+                        modeSwitch: 100, // Rare mode switching
+                        frightenedDuration: 7000 // Longer vulnerability
+                    });
+                });
+            } 
+            else if (level === "medium") {
+                ghostDefinitions.forEach((ghost, index) => {
+                    ghosts.push({
+                        ...ghost,
+                        speed: 1.0 - (index * 0.1), // Range 0.7-1.0
+                        vision: 8,
+                        aggression: 0.6,
+                        randomness: 0.2,
+                        modeSwitch: 60,
+                        frightenedDuration: 5000
+                    });
+                });
+            } 
+            else if (level === "hard") {
+                ghostDefinitions.forEach((ghost, index) => {
+                    ghosts.push({
+                        ...ghost,
+                        speed: 1.5 - (index * 0.2), // Range 1.1-1.5
+                        vision: 15, // Can see across entire map
+                        aggression: 0.9, // Almost always chase
+                        randomness: 0.05, // Rarely wander
+                        modeSwitch: 30, // Frequent mode switching
+                        frightenedDuration: 3000 // Short vulnerability
+                    });
+                });
+                
+                // Add an extra ghost on hard mode
+                ghosts.push({
+                    x: 1, y: 1,
+                    color: "purple",
+                    speed: 1.3,
+                    vision: 12,
+                    aggression: 0.8,
+                    randomness: 0.1,
+                    modeSwitch: 40,
+                    frightenedDuration: 4000
+                });
+            }
+
+            // Initialize common ghost properties
+            ghosts.forEach(ghost => {
+                ghost.mode = Math.random() > 0.5 ? "chase" : "scatter";
+                ghost.originalX = ghost.x;
+                ghost.originalY = ghost.y;
+                ghost.frightenedTimer = 0;
+            });
+        }
+
+        // Start game with selected difficulty
+        function startGame(difficulty) {
+            level = difficulty;
+            score = 0;
+            gameTick = 0;
+            initGrid();
+            initGhosts();
+            gameRunning = true;
+            
+            // Position Pac-Man
+            pacMan = { x: 3, y: 3 };
+            grid[3][3] = 'P';
+            
+            // Update UI
+            levelInfo.textContent = `Playing on ${level} difficulty`;
+            levelInfo.style.color = 
+                level === "easy" ? "lightgreen" : 
+                level === "medium" ? "yellow" : "red";
+            drawGame();
+        }
+
+        // Draw game elements
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw walls and dots
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = col * TILE_SIZE;
+                    const y = row * TILE_SIZE;
+
+                    if (grid[row][col] === '#') {
+                        ctx.fillStyle = "blue";
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    } else if (grid[row][col] === '.') {
+                        ctx.fillStyle = "yellow";
+                        ctx.beginPath();
+                        ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (grid[row][col] === 'O') {
+                        ctx.fillStyle = "white";
+                        ctx.beginPath();
+                        ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Draw Pac-Man with animation
+            ctx.fillStyle = "yellow";
+            const mouthAngle = 0.2 + 0.1 * Math.sin(gameTick * 0.2);
+            ctx.beginPath();
+            ctx.arc(
+                pacMan.y * TILE_SIZE + TILE_SIZE / 2, 
+                pacMan.x * TILE_SIZE + TILE_SIZE / 2, 
+                TILE_SIZE / 2, 
+                mouthAngle * Math.PI, 
+                (2 - mouthAngle) * Math.PI
+            );
+            ctx.lineTo(pacMan.y * TILE_SIZE + TILE_SIZE / 2, pacMan.x * TILE_SIZE + TILE_SIZE / 2);
+            ctx.fill();
+
+            // Draw Ghosts
+            ghosts.forEach(ghost => {
+                // Ghost body
+                const bodyColor = ghost.mode === "frightened" ? 
+                    (ghost.frightenedTimer > 2000 || Math.floor(ghost.frightenedTimer/200) % 2 === 0 ? "blue" : "white") : 
+                    ghost.color;
+                
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.arc(ghost.y * TILE_SIZE + TILE_SIZE / 2, ghost.x * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0, Math.PI);
+                
+                // Wavy bottom
+                for (let i = 0; i < 5; i++) {
+                    ctx.lineTo(
+                        ghost.y * TILE_SIZE + (i * TILE_SIZE / 4) + TILE_SIZE / 8, 
+                        ghost.x * TILE_SIZE + TILE_SIZE / 2 + (i % 2 === 0 ? 5 : -5)
+                    );
+                }
+                ctx.fill();
+                
+                // Eyes
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(ghost.y * TILE_SIZE + TILE_SIZE / 2 - 10, ghost.x * TILE_SIZE + TILE_SIZE / 2 - 5, 5, 0, Math.PI * 2);
+                ctx.arc(ghost.y * TILE_SIZE + TILE_SIZE / 2 + 10, ghost.x * TILE_SIZE + TILE_SIZE / 2 - 5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Pupils
+                const pupilColor = ghost.mode === "frightened" ? "white" : "black";
+                ctx.fillStyle = pupilColor;
+                
+                // Calculate pupil direction based on movement or Pac-Man position
+                let leftPupilX = 0, leftPupilY = 0;
+                let rightPupilX = 0, rightPupilY = 0;
+                
+                if (ghost.mode === "frightened") {
+                    // Random looking around when frightened
+                    leftPupilX = (Math.sin(gameTick * 0.1) * 3) - 10;
+                    leftPupilY = (Math.cos(gameTick * 0.15) * 2) - 5;
+                    rightPupilX = (Math.sin(gameTick * 0.12) * 3) + 10;
+                    rightPupilY = (Math.cos(gameTick * 0.13) * 2) - 5;
+                } else {
+                    // Look toward Pac-Man
+                    const dx = pacMan.y - ghost.y;
+                    const dy = pacMan.x - ghost.x;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    leftPupilX = (dx/dist * 3) - 10;
+                    leftPupilY = (dy/dist * 2) - 5;
+                    rightPupilX = (dx/dist * 3) + 10;
+                    rightPupilY = (dy/dist * 2) - 5;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(ghost.y * TILE_SIZE + TILE_SIZE / 2 + leftPupilX, ghost.x * TILE_SIZE + TILE_SIZE / 2 + leftPupilY, 2, 0, Math.PI * 2);
+                ctx.arc(ghost.y * TILE_SIZE + TILE_SIZE / 2 + rightPupilX, ghost.x * TILE_SIZE + TILE_SIZE / 2 + rightPupilY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Score and Level
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText(`Score: ${score} | Level: ${level} | Dots: ${dotsRemaining}`, 20, canvas.height - 20);
+        }
+
+        // Move Pac-Man
+        function movePacMan(dirX, dirY) {
+            if (!gameRunning) return;
+
+            const newX = pacMan.x + dirX;
+            const newY = pacMan.y + dirY;
+
+            if (grid[newX][newY] === '#') return;
+
+            // Clear old position
+            grid[pacMan.x][pacMan.y] = ' ';
+
+            // Handle dot or power pellet collection
+            if (grid[newX][newY] === '.') {
+                score += 10;
+                dotsRemaining--;
+                
+                // 15% chance to spawn power pellet when eating dot (max 1 at a time)
+                if (Math.random() < 0.15 && !grid.flat().includes('O') && dotsRemaining > 10) {
+                    // Find a random empty spot for power pellet
+                    const emptySpots = [];
+                    for (let row = 0; row < ROWS; row++) {
+                        for (let col = 0; col < COLS; col++) {
+                            if (grid[row][col] === ' ') {
+                                emptySpots.push({row, col});
+                            }
+                        }
+                    }
+                    if (emptySpots.length > 0) {
+                        const spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
+                        grid[spot.row][spot.col] = 'O';
+                    }
+                }
+            } 
+            else if (grid[newX][newY] === 'O') {
+                score += 50;
+                // Make ghosts frightened
+                ghosts.forEach(ghost => {
+                    ghost.mode = "frightened";
+                    ghost.frightenedTimer = ghost.frightenedDuration;
+                });
+            }
+
+            // Update Pac-Man position
+            pacMan.x = newX;
+            pacMan.y = newY;
+            grid[newX][newY] = ' '; // Clear the new position
+            gameTick++;
+
+            moveGhosts();
+            checkGameOver();
+            drawGame();
+        }
+
+        // Move ghosts using linked list pathfinding
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                // Handle frightened timer
+                if (ghost.mode === "frightened") {
+                    ghost.frightenedTimer -= 100;
+                    if (ghost.frightenedTimer <= 0) {
+                        ghost.mode = "chase";
+                    }
+                }
+                
+                // Only move based on ghost's speed
+                if (gameTick % Math.floor(2 / ghost.speed) !== 0) return;
+
+                let target = {x: pacMan.x, y: pacMan.y};
+                let forceRandom = false;
+                
+                // Determine behavior based on difficulty settings
+                if (ghost.mode !== "frightened") {
+                    // Check if ghost can see Pac-Man (within vision range)
+                    const canSeePacMan = (
+                        Math.abs(ghost.x - pacMan.x) <= ghost.vision && 
+                        Math.abs(ghost.y - pacMan.y) <= ghost.vision
+                    );
+                    
+                    // Decide whether to chase or wander
+                    if (ghost.mode === "chase") {
+                        if (canSeePacMan) {
+                            // Sometimes ignore Pac-Man based on aggression
+                            forceRandom = Math.random() > ghost.aggression;
+                        } else {
+                            // More likely to wander when can't see Pac-Man
+                            forceRandom = Math.random() > (ghost.aggression / 2);
+                        }
+                    } else { // scatter mode
+                        // Target a corner
+                        if (ghost.color === "red") target = {x: 1, y: 1};
+                        else if (ghost.color === "cyan") target = {x: 1, y: COLS-2};
+                        else if (ghost.color === "pink") target = {x: ROWS-2, y: 1};
+                        else target = {x: ROWS-2, y: COLS-2};
+                        
+                        // Sometimes ignore scatter target
+                        forceRandom = Math.random() < ghost.randomness;
+                    }
+                    
+                    // Periodically switch modes
+                    if (gameTick % ghost.modeSwitch === 0) {
+                        ghost.mode = ghost.mode === "chase" ? "scatter" : "chase";
+                    }
+                }
+                
+                // If frightened or forced random, move randomly
+                if (ghost.mode === "frightened" || forceRandom) {
+                    const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+                    const validMoves = directions.filter(([dx, dy]) => {
+                        const nx = ghost.x + dx;
+                        const ny = ghost.y + dy;
+                        return nx >= 0 && ny >= 0 && nx < ROWS && ny < COLS && grid[nx][ny] !== '#';
+                    });
+                    
+                    if (validMoves.length > 0) {
+                        const [dx, dy] = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        ghost.x += dx;
+                        ghost.y += dy;
+                        return;
+                    }
+                }
+
+                // Find path using BFS with linked list
+                const path = findPath(ghost, target);
+                if (path.length > 1) {
+                    // Move to next position in path
+                    ghost.x = path[1].x;
+                    ghost.y = path[1].y;
+                }
+            });
+        }
+
+        // BFS pathfinding using linked list
+        function findPath(start, target) {
+            const visited = new Set();
+            const queue = [new PathNode(start.x, start.y)];
+            visited.add(`${start.x},${start.y}`);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                // Check if we've reached the target
+                if (current.x === target.x && current.y === target.y) {
+                    // Reconstruct path by following prev pointers
+                    const path = [];
+                    let node = current;
+                    while (node !== null) {
+                        path.unshift({x: node.x, y: node.y});
+                        node = node.prev;
+                    }
+                    return path;
+                }
+
+                // Explore neighbors
+                const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+                for (const [dx, dy] of directions) {
+                    const nx = current.x + dx;
+                    const ny = current.y + dy;
+                    const key = `${nx},${ny}`;
+
+                    if (nx >= 0 && ny >= 0 && nx < ROWS && ny < COLS && 
+                        grid[nx][ny] !== '#' && !visited.has(key)) {
+                        visited.add(key);
+                        queue.push(new PathNode(nx, ny, current));
+                    }
+                }
+            }
+
+            return []; // No path found
+        }
+
+        // Check game over conditions
+        function checkGameOver() {
+            ghosts.forEach(ghost => {
+                if (pacMan.x === ghost.x && pacMan.y === ghost.y) {
+                    if (ghost.mode === "frightened") {
+                        // Eat the ghost
+                        score += 200;
+                        // Respawn ghost
+                        ghost.x = ghost.originalX;
+                        ghost.y = ghost.originalY;
+                        ghost.mode = "chase";
+                        ghost.frightenedTimer = 0;
+                    } else {
+                        gameOver(false);
+                    }
+                }
+            });
+
+            if (dotsRemaining <= 0) {
+                gameOver(true);
+            }
+        }
+
+        // Handle game over
+        function gameOver(won) {
+            gameRunning = false;
+            if (won) {
+                levelInfo.textContent = `You Win! Final Score: ${score}`;
+                levelInfo.style.color = "gold";
+            } else {
+                levelInfo.textContent = `Game Over! Final Score: ${score}`;
+                levelInfo.style.color = "red";
+            }
+        }
+
+        // Event listeners
+        easyBtn.addEventListener("click", () => startGame("easy"));
+        mediumBtn.addEventListener("click", () => startGame("medium"));
+        hardBtn.addEventListener("click", () => startGame("hard"));
+
+        document.addEventListener("keydown", (event) => {
+            if (!gameRunning) return;
+            
+            switch (event.key) {
+                case "ArrowUp": movePacMan(-1, 0); break;
+                case "ArrowDown": movePacMan(1, 0); break;
+                case "ArrowLeft": movePacMan(0, -1); break;
+                case "ArrowRight": movePacMan(0, 1); break;
+            }
+        });
+
+        // Initial draw
+        drawGame();
+    </script>
+</body>
+</html>

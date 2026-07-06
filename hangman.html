@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman Game</title>
+    <style>
+        body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: url('pixel.jpeg') no-repeat center center fixed;
+    background-size: cover;
+    opacity: 0.8; /* adjust this to your liking */
+    z-index: -1;
+}
+        #word-display { font-size: 24px; letter-spacing: 10px; margin: 20px; }
+        #message { font-weight: bold; margin: 10px; }
+        #guesses { margin: 10px; }
+        .btn { padding: 5px 10px; margin: 5px; cursor: pointer; }
+        
+        /* Hangman Drawing */
+        .hangman-container { display: flex; justify-content: center; margin: 20px; }
+        .hangman { width: 100px; height: 150px; position: relative; }
+        .pole { width: 5px; height: 100px; background: black; position: absolute; left: 20px; top: 0; }
+        .top-bar { width: 50px; height: 5px; background: black; position: absolute; left: 20px; top: 0; }
+        .rope { width: 2px; height: 20px; background: black; position: absolute; left: 45px; top: 5px; display: none; }
+        .head { width: 20px; height: 20px; border-radius: 50%; border: 2px solid black; position: absolute; left: 35px; top: 25px; display: none; }
+        .body { width: 2px; height: 30px; background: black; position: absolute; left: 45px; top: 45px; display: none; }
+        .arm { width: 20px; height: 2px; background: black; position: absolute; top: 50px; display: none; }
+        .left-arm { left: 30px; transform: rotate(-30deg); }
+        .right-arm { left: 45px; transform: rotate(30deg); }
+        .leg { width: 20px; height: 2px; background: black; position: absolute; top: 75px; display: none; }
+        .left-leg { left: 30px; transform: rotate(-30deg); }
+        .right-leg { left: 45px; transform: rotate(30deg); }
+    </style>
+</head>
+<body>
+    <center>
+        <div style="border:2px solid black ; height:550px ;width:500px ;background-color: #ffb6a0">
+    <h1>Hangman Game</h1>
+    <p>Level: <span id="level">1</span></p>
+    <p>High Score: <span id="high-score">0</span></p>
+    
+    <div class="hangman-container">
+        <div class="hangman">
+            <div class="pole"></div>
+            <div class="top-bar"></div>
+            <div class="rope" id="rope"></div>
+            <div class="head" id="head"></div>
+            <div class="body" id="body"></div>
+            <div class="arm left-arm" id="left-arm"></div>
+            <div class="arm right-arm" id="right-arm"></div>
+            <div class="leg left-leg" id="left-leg"></div>
+            <div class="leg right-leg" id="right-leg"></div>
+        </div>
+    </div>
+    
+    <div id="word-display">_ _ _ _ _</div>
+    <input type="text" id="guess" maxlength="1">
+    <button class="btn" onclick="makeGuess()">Guess</button>
+    <button class="btn" onclick="undoGuess()">Undo</button>
+    <p id="message"></p>
+    <p>Wrong Guesses: <span id="guesses">0</span>/6</p>
+</div>
+</center>
+    <script>
+        class Stack {
+            constructor() { this.items = []; }
+            push(item) { this.items.push(item); }
+            pop() { return this.items.pop(); }
+            peek() { return this.items[this.items.length - 1]; }
+            isEmpty() { return this.items.length === 0; }
+        }
+        
+        const words = ["apple", "banana", "cherry", "grapes", "mango", "orange", "peach", "pear", "plum", "melon"];
+        let level = 1;
+        let correctGuesses = 0;
+        let highScore = localStorage.getItem("highScore") || 0;
+        let selectedWord, guessedLetters, wrongGuessCount, maxWrongGuesses, guessStack;
+        
+        document.getElementById("high-score").textContent = highScore;
+        
+        function initializeGame() {
+            selectedWord = words[Math.floor(Math.random() * words.length)];
+            guessedLetters = new Set();
+            wrongGuessCount = 0;
+            maxWrongGuesses = 6;
+            guessStack = new Stack();
+            document.getElementById("guesses").textContent = wrongGuessCount;
+            document.getElementById("message").textContent = "";
+            updateHangman();
+            displayWord();
+        }
+        
+        function displayWord() {
+            let display = selectedWord.split('').map(letter => guessedLetters.has(letter) ? letter : '_').join(' ');
+            document.getElementById("word-display").textContent = display;
+        }
+        
+        function makeGuess() {
+            let input = document.getElementById("guess").value.toLowerCase();
+            document.getElementById("guess").value = "";
+            if (!input || guessedLetters.has(input)) return;
+            
+            guessedLetters.add(input);
+            guessStack.push(input);
+            
+            if (!selectedWord.includes(input)) {
+                wrongGuessCount++;
+                document.getElementById("guesses").textContent = wrongGuessCount;
+                updateHangman();
+            }
+            displayWord();
+            checkGameStatus();
+        }
+        
+        function updateHangman() {
+            const parts = ["rope", "head", "body", "left-arm", "right-arm", "left-leg", "right-leg"];
+            parts.forEach((part, index) => {
+                document.getElementById(part).style.display = index < wrongGuessCount ? "block" : "none";
+            });
+        }
+        
+        function undoGuess() {
+            if (guessStack.isEmpty()) return;
+            let lastGuess = guessStack.pop();
+            guessedLetters.delete(lastGuess);
+            displayWord();
+        }
+        
+        function checkGameStatus() {
+            if (!document.getElementById("word-display").textContent.includes("_")) {
+                document.getElementById("message").textContent = "You Win!";
+                correctGuesses++;
+                if (correctGuesses % 5 === 0) {
+                    level++;
+                    document.getElementById("level").textContent = level;
+                }
+                updateHighScore();
+                setTimeout(initializeGame, 1000);
+            } else if (wrongGuessCount >= maxWrongGuesses) {
+                document.getElementById("message").textContent = "Game Over! Word was: " + selectedWord;
+                correctGuesses = 0;
+                level = 1;
+                document.getElementById("level").textContent = level;
+                setTimeout(initializeGame, 2000);
+            }
+        }
+        
+        function updateHighScore() {
+            if (correctGuesses > highScore) {
+                highScore = correctGuesses;
+                localStorage.setItem("highScore", highScore);
+                document.getElementById("high-score").textContent = highScore;
+            }
+        }
+        
+        initializeGame();
+    </script>
+</body>
+</html>

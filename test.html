@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Big Five Personality Test</title>
+    <style>
+        
+        body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: url('pine.jpg') no-repeat center center fixed;
+    background-size: cover;
+    opacity: 0.8; /* adjust this to your liking */
+    z-index: -1;
+}
+
+
+        h1, h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .intro {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .question {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .options {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .option-label {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #results {
+            display: none;
+            margin-top: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .trait-result {
+            margin-bottom: 15px;
+        }
+        .trait-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .trait-bar {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .trait-level {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 10px;
+        }
+        .trait-desc {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #c91392;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        .game-recommendation {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .game-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .game-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .game-explanation {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .play-button {
+            background-color: #2ecc71;
+            margin-top: 10px;
+        }
+        .play-button:hover {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <h1>Quick Big Five Personality Test</h1>
+    <div class="intro">
+        <p>This shortened test measures your personality across five major dimensions with just 20 questions. For each statement, indicate how much you agree or disagree.</p>
+    </div>
+
+    <div id="test-container">
+        <div class="progress-container">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+        
+        <div id="questions"></div>
+        
+        <button id="submit-btn" style="display: none;">Get My Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // Big Five questions (4 per trait)
+        const questions = [
+            // Openness (O)
+            { text: "I have a vivid imagination.", trait: "O" },
+            { text: "I enjoy artistic experiences.", trait: "O" },
+            { text: "I prefer variety over routine.", trait: "O" },
+            { text: "I am curious about many different things.", trait: "O" },
+            
+            // Conscientiousness (C)
+            { text: "I am always prepared.", trait: "C" },
+            { text: "I pay attention to details.", trait: "C" },
+            { text: "I follow a schedule.", trait: "C" },
+            { text: "I make plans and stick to them.", trait: "C" },
+            
+            // Extraversion (E)
+            { text: "I am the life of the party.", trait: "E" },
+            { text: "I feel comfortable around people.", trait: "E" },
+            { text: "I am outgoing and sociable.", trait: "E" },
+            { text: "I enjoy being in large groups.", trait: "E" },
+            
+            // Agreeableness (A)
+            { text: "I sympathize with others' feelings.", trait: "A" },
+            { text: "I am kind to almost everyone.", trait: "A" },
+            { text: "I like to help others.", trait: "A" },
+            { text: "I believe people are basically good.", trait: "A" },
+            
+            // Neuroticism (N)
+            { text: "I get stressed out easily.", trait: "N" },
+            { text: "I worry about things.", trait: "N" },
+            { text: "I have frequent mood swings.", trait: "N" },
+            { text: "I am easily overwhelmed.", trait: "N" }
+        ];
+
+        // Personality-Game Mappings with playable links
+        const gameRecommendations = {
+            O: {
+                name: "Hang-man",
+                icon: "🚹",
+                reason: "Your creativity and love for exploration make Minecraft perfect for you! Build, explore, and create your own worlds.",
+                playLink: "hangman.html"
+            },
+            C: {
+                name: "Tetris",
+                icon: "🧱",
+                reason: "Your organized mind and attention to detail will excel at Tetris, where order and planning lead to success.",
+                playLink: "Tetris.html"
+            },
+            E: {
+                name: "Pac-Man",
+                icon:  "👻",
+                reason: "Your energetic and spontaneous nature matches perfectly with this fast-paced, reaction-based game.",
+                playLink: "Pac-Man.html"
+            },
+            A: {
+                name: "Memory Card Game",
+                icon:"🧠",
+                reason: "Your cooperative and friendly personality aligns with Pac-Man's focus on helping others (eating ghosts with power pellets).",
+                playLink: "Memory.html"
+            },
+            N: {
+                name:"Piano Tiles Game",
+                icon:"🎹",
+                reason: "Your sensitivity makes you great at noticing patterns and details-perfect for memory challenges!",
+                playLink: "piano.html"
+            }
+        };
+
+        // Shuffle questions to mix traits
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        const shuffledQuestions = shuffleArray([...questions]);
+        let currentQuestion = 0;
+        let answers = [];
+        
+        // Display current question
+        function displayQuestion() {
+            const questionsContainer = document.getElementById('questions');
+            questionsContainer.innerHTML = '';
+            
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'question';
+            
+            const questionText = document.createElement('p');
+            questionText.textContent = shuffledQuestions[currentQuestion].text;
+            questionDiv.appendChild(questionText);
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+            
+            // Create 5-point Likert scale (1-5)
+            for (let i = 1; i <= 5; i++) {
+                const optionDiv = document.createElement('div');
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'answer';
+                radio.value = i;
+                radio.id = `option${i}`;
+                radio.addEventListener('change', () => {
+                    document.getElementById('next-btn').disabled = false;
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = `option${i}`;
+                label.textContent = i;
+                
+                optionDiv.appendChild(radio);
+                optionDiv.appendChild(label);
+                optionsDiv.appendChild(optionDiv);
+            }
+            
+            const labelsDiv = document.createElement('div');
+            labelsDiv.className = 'options';
+            
+            const label1 = document.createElement('div');
+            label1.className = 'option-label';
+            label1.textContent = 'Strongly Disagree';
+            
+            const label5 = document.createElement('div');
+            label5.className = 'option-label';
+            label5.textContent = 'Strongly Agree';
+            
+            labelsDiv.appendChild(label1);
+            labelsDiv.appendChild(document.createElement('div')); // spacer
+            labelsDiv.appendChild(document.createElement('div')); // spacer
+            labelsDiv.appendChild(document.createElement('div')); // spacer
+            labelsDiv.appendChild(label5);
+            
+            questionDiv.appendChild(optionsDiv);
+            questionDiv.appendChild(labelsDiv);
+            
+            const nextBtn = document.createElement('button');
+            nextBtn.id = 'next-btn';
+            nextBtn.textContent = currentQuestion === shuffledQuestions.length - 1 ? 'Finish Test' : 'Next Question';
+            nextBtn.disabled = true;
+            nextBtn.addEventListener('click', nextQuestion);
+            
+            questionDiv.appendChild(nextBtn);
+            questionsContainer.appendChild(questionDiv);
+            
+            // Update progress bar
+            const progress = ((currentQuestion + 1) / shuffledQuestions.length) * 100;
+            document.getElementById('progress').style.width = `${progress}%`;
+        }
+        
+        // Move to next question or show results
+        function nextQuestion() {
+            const selectedOption = document.querySelector('input[name="answer"]:checked');
+            if (!selectedOption) return;
+            
+            answers.push({
+                question: shuffledQuestions[currentQuestion].text,
+                trait: shuffledQuestions[currentQuestion].trait,
+                score: parseInt(selectedOption.value)
+            });
+            
+            currentQuestion++;
+            
+            if (currentQuestion < shuffledQuestions.length) {
+                displayQuestion();
+            } else {
+                showResults();
+            }
+        }
+        
+        // Calculate and display results
+        function showResults() {
+            document.getElementById('test-container').style.display = 'none';
+            
+            // Calculate average scores for each trait
+            const traitScores = {
+                O: { sum: 0, count: 0, name: 'Openness' },
+                C: { sum: 0, count: 0, name: 'Conscientiousness' },
+                E: { sum: 0, count: 0, name: 'Extraversion' },
+                A: { sum: 0, count: 0, name: 'Agreeableness' },
+                N: { sum: 0, count: 0, name: 'Neuroticism' }
+            };
+            
+            answers.forEach(answer => {
+                traitScores[answer.trait].sum += answer.score;
+                traitScores[answer.trait].count++;
+            });
+            
+            // Find highest scoring trait
+            let highestTrait = 'O';
+            let highestScore = traitScores['O'].sum / traitScores['O'].count;
+            
+            for (const trait in traitScores) {
+                const currentScore = traitScores[trait].sum / traitScores[trait].count;
+                if (currentScore > highestScore) {
+                    highestScore = currentScore;
+                    highestTrait = trait;
+                }
+            }
+            
+            const recommendedGame = gameRecommendations[highestTrait];
+            
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.style.display = 'block';
+            
+            let resultsHTML = '<h2>Your Personality Results</h2>';
+            resultsHTML += '<p>Here are your scores on the Big Five personality traits:</p>';
+            
+            // Display results for each trait
+            for (const trait in traitScores) {
+                const avgScore = traitScores[trait].sum / traitScores[trait].count;
+                const percentage = (avgScore / 5) * 100;
+                
+                let description = '';
+                if (avgScore < 2.5) {
+                    description = getLowDescription(trait);
+                } else if (avgScore > 3.5) {
+                    description = getHighDescription(trait);
+                } else {
+                    description = getMediumDescription(trait);
+                }
+                
+                resultsHTML += `
+                    <div class="trait-result">
+                        <div class="trait-name">${traitScores[trait].name}: ${avgScore.toFixed(1)}/5</div>
+                        <div class="trait-bar">
+                            <div class="trait-level" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="trait-desc">${description}</div>
+                    </div>
+                `;
+            }
+            
+            // Add game recommendation with play button
+            resultsHTML += `
+                <div class="game-recommendation">
+                    <h2>Recommended Game For You</h2>
+                    <div class="game-icon">${recommendedGame.icon}</div>
+                    <div class="game-title">${recommendedGame.name}</div>
+                    <div class="game-explanation">${recommendedGame.reason}</div>
+                    <a href="${recommendedGame.playLink}" target="_blank">
+                        <button class="play-button">Play Now →</button>
+                    </a>
+                    <p><small>(Link opens in new tab)</small></p>
+                </div>
+            `;
+            
+            resultsContainer.innerHTML = resultsHTML;
+        }
+        
+        // Helper functions for trait descriptions
+        function getHighDescription(trait) {
+            const descriptions = {
+                O: "You are highly open to new experiences. You're creative, curious, and enjoy novelty.",
+                C: "You are highly conscientious. You're organized, dependable, and disciplined.",
+                E: "You are highly extraverted. You're outgoing and enjoy being around people.",
+                A: "You are highly agreeable. You're compassionate and trusting.",
+                N: "You score high on neuroticism. You may experience emotional instability."
+            };
+            return descriptions[trait];
+        }
+        
+        function getLowDescription(trait) {
+            const descriptions = {
+                O: "You are less open to new experiences. You prefer routine and familiarity.",
+                C: "You are less conscientious. You may be more spontaneous.",
+                E: "You are less extraverted. You're more reserved.",
+                A: "You are less agreeable. You tend to be more competitive.",
+                N: "You score low on neuroticism. You're emotionally stable."
+            };
+            return descriptions[trait];
+        }
+        
+        function getMediumDescription(trait) {
+            const descriptions = {
+                O: "You have a balanced level of openness. You enjoy some new experiences but also appreciate routine.",
+                C: "You have a balanced level of conscientiousness. You're organized when needed but can be flexible.",
+                E: "You have a balanced level of extraversion. You enjoy socializing but also value alone time.",
+                A: "You have a balanced level of agreeableness. You're generally kind but can assert yourself.",
+                N: "You have a balanced level of neuroticism. You experience normal levels of stress."
+            };
+            return descriptions[trait];
+        }
+        
+        // Start the test
+        displayQuestion();
+    </script>
+</body>
+</html>

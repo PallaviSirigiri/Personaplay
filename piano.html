@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soothing Piano with DSA</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      background: url('cloud.jpg') no-repeat center center fixed;
+      background-size: cover;
+      opacity: 0.8;
+      z-index: -1;
+    }
+    
+    h1 {
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .piano-section {
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .keys, .keys1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .key, .key1 {
+      width: 60px;
+      height: 200px;
+      background: #444;
+      border-radius: 8px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.1s;
+      padding-bottom: 10px;
+    }
+
+    .key.white {
+      background: white;
+      color: #333;
+      z-index: 1;
+    }
+
+    .key.black {
+      background: #222;
+      height: 120px;
+      width: 40px;
+      margin-left: -20px;
+      margin-right: -20px;
+      z-index: 2;
+    }
+
+    .key1 {
+      background: linear-gradient(135deg, #6e8efb, #a777e3);
+    }
+
+    .key:hover, .key1:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+
+    .key:active, .key.active, .key1:active, .key1.active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .play-history {
+      margin-top: 20px;
+      max-height: 150px;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .play-history-item {
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+
+<center>
+  <h1>🎵 Simple Piano (Synth Sounds)</h1>
+  <div class="keys1">
+    <div class="key1" data-key="P">P</div>
+    <div class="key1" data-key="Q">Q</div>
+    <div class="key1" data-key="R">R</div>
+    <div class="key1" data-key="S">S</div>
+    <div class="key1" data-key="T">T</div>
+    <div class="key1" data-key="U">U</div>
+    <div class="key1" data-key="V">V</div>
+    <div class="key1" data-key="W">W</div>
+  </div>
+  <p>Press the keys to play synth sounds</p>
+</center>
+
+<h1>🎹 Full Piano (Real Piano Sounds)</h1>
+
+<div class="container">
+  <div class="piano-section">
+    <div class="keys" id="pianoKeys">
+      <div class="key white" data-key="A" data-note="C">C</div>
+      <div class="key black" data-key="W" data-note="C#">C#</div>
+      <div class="key white" data-key="S" data-note="D">D</div>
+      <div class="key black" data-key="E" data-note="D#">D#</div>
+      <div class="key white" data-key="D" data-note="E">E</div>
+      <div class="key white" data-key="F" data-note="F">F</div>
+      <div class="key black" data-key="T" data-note="F#">F#</div>
+      <div class="key white" data-key="G" data-note="G">G</div>
+      <div class="key black" data-key="Y" data-note="G#">G#</div>
+      <div class="key white" data-key="H" data-note="A">A</div>
+      <div class="key black" data-key="U" data-note="A#">A#</div>
+      <div class="key white" data-key="J" data-note="B">B</div>
+      <div class="key white" data-key="K" data-note="C2">C</div>
+    </div>
+    <p>Press the keys (A to K) or click them to play piano notes</p>
+
+    <div class="play-history">
+      <h3>Play History (Linked List)</h3>
+      <div id="historyList"></div>
+    </div>
+
+    <button id="undoBtn">Undo Last Note (Pop)</button>
+    <button id="playSequenceBtn">Play Sequence (Queue)</button>
+  </div>
+</div>
+
+<script>
+  class Node {
+    constructor(data) {
+      this.data = data;
+      this.next = null;
+    }
+  }
+
+  class LinkedList {
+    constructor() {
+      this.head = null;
+    }
+
+    insert(data) {
+      const newNode = new Node(data);
+      newNode.next = this.head;
+      this.head = newNode;
+    }
+
+    remove() {
+      if (!this.head) return null;
+      const removed = this.head.data;
+      this.head = this.head.next;
+      return removed;
+    }
+
+    toArray() {
+      let arr = [];
+      let current = this.head;
+      while (current) {
+        arr.push(current.data);
+        current = current.next;
+      }
+      return arr;
+    }
+
+    isEmpty() {
+      return this.head === null;
+    }
+  }
+
+  const playHistory = new LinkedList();
+  const historyList = document.getElementById('historyList');
+  let playbackQueue = [];
+  let isPlayingSequence = false;
+  
+  // Store currently playing audio objects
+  let currentTopAudio = null;
+  let currentBottomAudio = null;
+
+  // Different sounds for the top piano (synth sounds)
+  const synthSoundMap = {
+    'P': { file: 'piano1.mp3', note: 'P' },
+    'Q': { file: 'piano2.mp3', note: 'Q' },
+    'R': { file: 'piano3.mp3', note: 'R' },
+    'S': { file: 'piano4.mp3', note: 'S' },
+    'T': { file: 'piano5.mp3', note: 'T' },
+    'U': { file: 'piano6.mp3', note: 'U' },
+    'V': { file: 'piano7.mp3', note: 'V' },
+    'W': { file: 'piano8.mp3', note: 'W' }
+  };
+
+  // Real piano sounds for the bottom piano
+  const pianoSoundMap = {
+    'A': { file: 'c.mp3', note: 'C' },
+    'W': { file: 'csharp.mp3', note: 'C#' },
+    'S': { file: 'd.mp3', note: 'D' },
+    'E': { file: 'dsharp.mp3', note: 'D#' },
+    'D': { file: 'e.mp3', note: 'E' },
+    'F': { file: 'f.mp3', note: 'F' },
+    'T': { file: 'fsharp.mp3', note: 'F#' },
+    'G': { file: 'g.mp3', note: 'G' },
+    'Y': { file: 'gsharp.mp3', note: 'G#' },
+    'H': { file: 'a.mp3', note: 'A' },
+    'U': { file: 'asharp.mp3', note: 'A#' },
+    'J': { file: 'b.mp3', note: 'B' },
+    'K': { file: 'c.mp3', note: 'C' }
+  };
+
+  function playSound(key, isTopPiano = false) {
+    const soundMap = isTopPiano ? synthSoundMap : pianoSoundMap;
+    if (!soundMap[key]) return;
+    
+    // Stop any currently playing sound for this piano
+    if (isTopPiano && currentTopAudio) {
+      currentTopAudio.pause();
+      currentTopAudio.currentTime = 0;
+    } else if (!isTopPiano && currentBottomAudio) {
+      currentBottomAudio.pause();
+      currentBottomAudio.currentTime = 0;
+    }
+    
+    const audio = new Audio(soundMap[key].file);
+    audio.play();
+    
+    // Store the reference to the currently playing audio
+    if (isTopPiano) {
+      currentTopAudio = audio;
+    } else {
+      currentBottomAudio = audio;
+    }
+
+    // Only record history for the bottom piano
+    if (!isTopPiano) {
+      playHistory.insert({
+        key,
+        note: soundMap[key].note,
+        time: new Date().toLocaleTimeString()
+      });
+      updateHistoryDisplay();
+    }
+
+    const keyElement = document.querySelector(`.${isTopPiano ? 'key1' : 'key'}[data-key="${key}"]`);
+    if (keyElement) {
+      keyElement.classList.add('active');
+      setTimeout(() => {
+        keyElement.classList.remove('active');
+      }, 200);
+    }
+  }
+
+  function updateHistoryDisplay() {
+    historyList.innerHTML = '';
+    playHistory.toArray().forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'play-history-item';
+      div.textContent = `${item.note} (${item.key}) - ${item.time}`;
+      historyList.appendChild(div);
+    });
+  }
+
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    const removed = playHistory.remove();
+    if (removed) {
+      updateHistoryDisplay();
+      alert(`Undid: ${removed.note} (${removed.key})`);
+    } else {
+      alert('History is empty!');
+    }
+  });
+
+  document.getElementById('playSequenceBtn').addEventListener('click', () => {
+    if (isPlayingSequence || playHistory.isEmpty()) {
+      if (playHistory.isEmpty()) alert('No notes in history to play!');
+      return;
+    }
+    isPlayingSequence = true;
+    playbackQueue = playHistory.toArray().reverse();
+    playNextInQueue();
+  });
+
+  function playNextInQueue() {
+    if (playbackQueue.length === 0) {
+      isPlayingSequence = false;
+      return;
+    }
+
+    const nextNote = playbackQueue.shift();
+    const key = nextNote.key;
+    const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+    if (keyElement) keyElement.classList.add('active');
+
+    // Stop any currently playing sound before playing the next one
+    if (currentBottomAudio) {
+      currentBottomAudio.pause();
+      currentBottomAudio.currentTime = 0;
+    }
+    
+    currentBottomAudio = new Audio(pianoSoundMap[key].file);
+    currentBottomAudio.play();
+
+    setTimeout(() => {
+      if (keyElement) keyElement.classList.remove('active');
+    }, 400);
+
+    setTimeout(playNextInQueue, 600);
+  }
+
+  // Bottom piano click handler
+  document.getElementById('pianoKeys').addEventListener('click', (e) => {
+    const key = e.target.getAttribute('data-key');
+    if (key) playSound(key, false);
+  });
+
+  // Top piano click handler
+  document.querySelectorAll('.key1').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.getAttribute('data-key');
+      playSound(key, true);
+    });
+  });
+
+  // Keyboard handler - plays both pianos
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toUpperCase();
+    if (synthSoundMap[key]) playSound(key, true);  // Top piano
+    if (pianoSoundMap[key]) playSound(key, false); // Bottom piano
+  });
+
+  // Binary Search
+  function binarySearchNotes(note) {
+    const notes = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+    let left = 0, right = notes.length - 1;
+    while (left <= right) {
+      let mid = Math.floor((left + right) / 2);
+      if (notes[mid] === note) return mid;
+      else if (notes[mid] < note) left = mid + 1;
+      else right = mid - 1;
+    }
+    return -1;
+  }
+
+  console.log("Binary search for 'F#':", binarySearchNotes('F#'));
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personality Assessment</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: url('home.jpg') no-repeat center center fixed;
+            background-size: cover;
+            opacity: 0.8;
+            z-index: -1;
+        }
+        
+        h1 {
+            font-size: 60px;
+            color: #c9cfcf;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .begin-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background-color: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .begin-btn:hover {
+            background-color: #3a5a80;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        
+        .begin-btn:active {
+            transform: translateY(1px);
+        }
+
+        .content {
+            max-width: 800px;
+            padding: 20px;
+        }
+        #user-answer {
+            padding: 10px;
+            width: 80%;
+            margin: 10px 0;
+            font-size: 1em;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+        #hint {
+            color: #666;
+            font-style: italic;
+            margin: 10px 0;
+        }
+        p{
+            color:white;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h1>Persona play</h1>
+        <a href="test.html">
+        <button class="begin-btn">Begin Your Personality Test</button>
+        </a>
+        <h2>Riddle Challenge</h2>
+        <p>Solve this riddle to access all games</p>
+        
+        <div id="riddle-text">Loading riddle...</div>
+        
+        <div id="hint" class="hidden" style="color: #cccccc;"></div>
+        
+        <input type="text" id="user-answer" placeholder="Your answer...">
+        <button id="check-answer">Check Answer</button>        
+        <div id="result-message"></div> 
+        <div id="next-page-link" class="hidden">
+            <p>Correct! You may now proceed to the next page.</p>
+            <a href="game.html"><button>Go to Next Page</button></a>
+        </div>
+    </div>
+<script>
+        // Extensive local riddle collection (100+ riddles)
+        const localRiddles = [
+            { riddle: "What has to be broken before you can use it?", answer: "egg" },
+            { riddle: "I'm tall when I'm young, and I'm short when I'm old. What am I?", answer: "candle" },
+            { riddle: "What month of the year has 28 days?", answer: "all" },
+            { riddle: "What is full of holes but still holds water?", answer: "sponge" },
+            { riddle: "What question can you never answer yes to?", answer: "asleep" },
+            { riddle: "What is always in front of you but can't be seen?", answer: "future" },
+            { riddle: "There's a one-story house where everything is yellow. The walls are yellow. The doors are yellow. Even all the furniture is yellow. What color are the stairs?", answer: "none" },
+            { riddle: "What can you catch but not throw?", answer: "cold" },
+            { riddle: "What goes up but never comes down?", answer: "age" },
+            { riddle: "What can you keep after giving to someone?", answer: "word" },
+            { riddle: "I shave every day, but my beard stays the same. What am I?", answer: "barber" },
+            { riddle: "What has many keys but can't open a single lock?", answer: "piano" },
+            { riddle: "What can you break, even if you never pick it up or touch it?", answer: "promise" },
+            { riddle: "What gets wet while drying?", answer: "towel" },
+            { riddle: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?", answer: "map" },
+            { riddle: "What can run but never walks, has a mouth but never talks, has a head but never weeps, has a bed but never sleeps?", answer: "river" },
+            { riddle: "The more you take, the more you leave behind. What am I?", answer: "footsteps" },
+            { riddle: "What has hands but can't clap?", answer: "clock" },
+            { riddle: "What has a thumb and four fingers but is not alive?", answer: "glove" },
+            { riddle: "What has a neck but no head?", answer: "bottle" },
+            // Add 80+ more riddles here...
+            { riddle: "What can travel around the world while staying in a corner?", answer: "stamp" },
+            { riddle: "What has words but never speaks?", answer: "book" },
+            { riddle: "What has a bottom at the top?", answer: "leg" },
+            { riddle: "What gets bigger when more is taken away?", answer: "hole" },
+            { riddle: "What belongs to you but other people use it more than you?", answer: "name" },
+            { riddle: "I'm light as a feather, yet the strongest person can't hold me for more than 5 minutes. What am I?", answer: "breath" },
+            { riddle: "What can you hold in your right hand but not in your left?", answer: "elbow" },
+            { riddle: "What has many teeth but can't bite?", answer: "comb" },
+            { riddle: "The more there is, the less you see. What is it?", answer: "darkness" },
+            { riddle: "What is so fragile that saying its name breaks it?", answer: "silence" }
+        ];
+
+        // Current riddle data
+        let currentRiddle = null;
+        
+        // DOM elements
+        const riddleText = document.getElementById('riddle-text');
+        const hintElement = document.getElementById('hint');
+        const userAnswer = document.getElementById('user-answer');
+        const checkAnswerBtn = document.getElementById('check-answer');
+        const resultMessage = document.getElementById('result-message');
+        
+        // Initialize with a new riddle on page load
+        document.addEventListener('DOMContentLoaded', getNewRiddle);
+        
+        // Event listeners
+        checkAnswerBtn.addEventListener('click', checkAnswer);
+        userAnswer.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+        
+        // Get a new riddle (from API or local collection)
+        async function getNewRiddle() {
+            // Reset UI
+            hintElement.classList.add('hidden');
+            userAnswer.value = "";
+            resultMessage.textContent = "";
+            checkAnswerBtn.disabled = false;
+            
+            // Try API first
+            try {
+                const response = await fetch('https://riddles-api.vercel.app/api/random');
+                const data = await response.json();
+                currentRiddle = {
+                    riddle: data.riddle,
+                    answer: data.answer.toLowerCase()
+                };
+                riddleText.textContent = currentRiddle.riddle;
+            } catch (error) {
+                // If API fails, use local collection
+                console.log("Using local riddles");
+                useLocalRiddle();
+            }
+            
+            // Set hint timeout
+            if (window.hintTimeout) {
+                clearTimeout(window.hintTimeout);
+            }
+            window.hintTimeout = setTimeout(showHint, 30000);
+        }
+        
+        // Get a random riddle from local collection
+        function useLocalRiddle() {
+            const randomIndex = Math.floor(Math.random() * localRiddles.length);
+            currentRiddle = {
+                riddle: localRiddles[randomIndex].riddle,
+                answer: localRiddles[randomIndex].answer.toLowerCase()
+            };
+            riddleText.textContent = currentRiddle.riddle;
+        }
+        
+        // Show hint after timeout
+        function showHint() {
+            if (!currentRiddle) return;
+            hintElement.textContent = `Hint: The answer starts with "${currentRiddle.answer.charAt(0).toUpperCase()}" and has ${currentRiddle.answer.length} letters.`;
+            hintElement.classList.remove('hidden');
+        }
+        
+        // Check if the user's answer is correct
+        function checkAnswer() {
+            const userGuess = userAnswer.value.trim().toLowerCase();
+            
+            if (!userGuess) {
+                resultMessage.textContent = "Please enter an answer.";
+                resultMessage.style.color = "red";
+                return;
+            }
+            
+            // Check if answer is correct (allowing for some flexibility)
+            if (userGuess === currentRiddle.answer || 
+                currentRiddle.answer.includes(userGuess) || 
+                userGuess.includes(currentRiddle.answer)) {
+                resultMessage.textContent = "Correct! Well done!";
+                resultMessage.style.color = "green";
+                checkAnswerBtn.disabled = true;
+                hintElement.classList.add('hidden');
+                
+                // Clear the hint timeout
+                if (window.hintTimeout) {
+                    clearTimeout(window.hintTimeout);
+                }
+                
+                // Show the next page link
+                document.getElementById('next-page-link').classList.remove('hidden');
+            } else {
+                resultMessage.textContent = "Incorrect. Try again!";
+                resultMessage.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Memory Game</title>
+    <style>
+         body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: url('memory.jpg') no-repeat center center fixed;
+    background-size: cover;
+    opacity: 0.8; /* adjust this to your liking */
+    z-index: -1;
+}
+        .game-board { display: grid; gap: 10px; justify-content: center; }
+        .card { width: 100px; height: 100px; background: gray; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; }
+        .flipped { background: white; }
+    </style>
+</head>
+<body>
+    <h1>Infinite Memory Game</h1>
+    <h2>Level: <span id="level">1</span></h2>
+    <div class="game-board" id="gameBoard"></div>
+    <script>
+        class Queue {
+            constructor() { this.items = []; }
+            enqueue(element) { this.items.push(element); }
+            dequeue() { return this.items.shift(); }
+            isEmpty() { return this.items.length === 0; }
+        }
+
+        class Stack {
+            constructor() { this.items = []; }
+            push(element) { this.items.push(element); }
+            pop() { return this.items.pop(); }
+            peek() { return this.items[this.items.length - 1]; }
+            isEmpty() { return this.items.length === 0; }
+        }
+
+        class LinkedList {
+            constructor() { this.head = null; }
+            add(value) {
+                let newNode = { value: value, next: this.head };
+                this.head = newNode;
+            }
+        }
+
+        class TreeNode {
+            constructor(level) {
+                this.level = level;
+                this.left = null;
+                this.right = null;
+            }
+        }
+
+        let level = 1;
+        let images;
+        let queue = new Queue();
+        let stack = new Stack();
+        let matchedPairs = new LinkedList();
+
+        function generateImages(level) {
+            let baseImages = ['🐱', '🎤', '🎮', '🎵', '🍎', '🐾', '💙', '📢'];
+            let totalPairs = Math.min(baseImages.length, level + 2);
+            let gameImages = baseImages.slice(0, totalPairs).flatMap(img => [img, img]);
+            return gameImages.sort(() => Math.random() - 0.5);
+        }
+
+        function createBoard() {
+            document.getElementById('gameBoard').innerHTML = '';
+            document.getElementById('gameBoard').style.gridTemplateColumns = `repeat(${Math.ceil(Math.sqrt(images.length))}, 100px)`;
+            images.forEach((img, index) => {
+                let card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.value = img;
+                card.dataset.index = index;
+                card.innerText = '?';
+                card.addEventListener('click', () => flipCard(card));
+                document.getElementById('gameBoard').appendChild(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (!queue.isEmpty() && queue.items.length === 2) return;
+            if (card.classList.contains('flipped')) return;
+            
+            card.classList.add('flipped');
+            card.innerText = card.dataset.value;
+            queue.enqueue(card);
+            stack.push(card);
+
+            if (queue.items.length === 2) {
+                setTimeout(checkMatch, 500);
+            }
+        }
+
+        function checkMatch() {
+            let first = queue.dequeue();
+            let second = queue.dequeue();
+            if (first.dataset.value === second.dataset.value) {
+                matchedPairs.add(first.dataset.value);
+            } else {
+                first.classList.remove('flipped');
+                second.classList.remove('flipped');
+                first.innerText = '?';
+                second.innerText = '?';
+            }
+            stack.pop();
+            stack.pop();
+
+            if (checkLevelCompletion()) {
+                setTimeout(nextLevel, 1000);
+            }
+        }
+
+        function checkLevelCompletion() {
+            return document.querySelectorAll('.flipped').length === images.length;
+        }
+
+        function nextLevel() {
+            level++;
+            document.getElementById('level').innerText = level;
+            images = generateImages(level);
+            queue = new Queue();
+            stack = new Stack();
+            matchedPairs = new LinkedList();
+            createBoard();
+        }
+
+        images = generateImages(level);
+        createBoard();
+    </script>
+</body>
+</html>
